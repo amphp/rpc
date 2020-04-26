@@ -30,7 +30,7 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Amp\\Rpc\\Examples\\Basic\\": "examples/basic/src"
+            "Amp\\Rpc\\Examples\\Basic\\": "examples/src"
         }
     }
 }

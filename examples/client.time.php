@@ -1,6 +1,6 @@
 <?php
 
-require __DIR__ . '/../../vendor/autoload.php';
+require __DIR__ . '/../vendor/autoload.php';
 
 use Amp\Log\ConsoleFormatter;
 use Amp\Log\StreamHandler;

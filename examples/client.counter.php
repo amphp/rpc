@@ -1,6 +1,6 @@
 <?php
 
-require __DIR__ . '/../../vendor/autoload.php';
+require __DIR__ . '/../vendor/autoload.php';
 
 use Amp\Http\Client\Connection\DefaultConnectionFactory;
 use Amp\Http\Client\Connection\UnlimitedConnectionPool;
