@@ -20,5 +20,5 @@ Amp\Loop::run(static function () {
     $proxyFactory = new RemoteObjectFactory(new RpcClient('http://localhost:1337/', new NativeSerializer));
     $timeService = $proxyFactory->createProxy(TimeService::class);
 
-    var_dump(yield $timeService->getCurrentTime());
+    \var_dump(yield $timeService->getCurrentTime());
 });

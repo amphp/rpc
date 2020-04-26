@@ -24,9 +24,14 @@ Amp\Loop::run(static function () {
     $logger = new Logger('server');
     $logger->pushHandler($logHandler);
 
-    $proxyFactory = new RemoteObjectFactory(new RpcClient('https://localhost:1338/', new NativeSerializer,
-        (new HttpClientBuilder)->usingPool(new UnlimitedConnectionPool(new DefaultConnectionFactory(null,
-            (new ConnectContext())->withTlsContext((new ClientTlsContext(''))->withoutPeerVerification()))))->build()));
+    $proxyFactory = new RemoteObjectFactory(new RpcClient(
+        'https://localhost:1338/',
+        new NativeSerializer,
+        (new HttpClientBuilder)->usingPool(new UnlimitedConnectionPool(new DefaultConnectionFactory(
+            null,
+            (new ConnectContext())->withTlsContext((new ClientTlsContext(''))->withoutPeerVerification())
+        )))->build()
+    ));
     $counter = $proxyFactory->createProxy(Counter::class);
 
     print yield $counter->get();
