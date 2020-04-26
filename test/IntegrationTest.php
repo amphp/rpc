@@ -5,7 +5,6 @@ namespace Amp\Rpc;
 use Amp\Delayed;
 use Amp\Failure;
 use Amp\Http\Server\HttpServer;
-use Amp\Loop;
 use Amp\PHPUnit\AsyncTestCase;
 use Amp\Promise;
 use Amp\Rpc\Client\RpcClient;
@@ -27,6 +26,15 @@ interface IntegrationTestService
     public function throwException(): Promise;
 
     public function throwError(): Promise;
+
+    public function getNonSerializableValue(): Promise;
+
+    public function sendNonSerializableValue($value): Promise;
+}
+
+interface UnregisteredIntegrationTestService
+{
+    public function foobar(): Promise;
 }
 
 class IntegrationTest extends AsyncTestCase
@@ -37,6 +45,8 @@ class IntegrationTest extends AsyncTestCase
     private $socket;
     /** @var IntegrationTestService */
     private $client;
+    /** @var UnregisteredIntegrationTestService */
+    private $unregisteredClient;
 
     public function setUp(): void
     {
@@ -66,6 +76,18 @@ class IntegrationTest extends AsyncTestCase
                 {
                     throw new \TypeError(__METHOD__);
                 }
+
+                public function getNonSerializableValue(): Promise
+                {
+                    return new Success((static function () {
+                        yield;
+                    })());
+                }
+
+                public function sendNonSerializableValue($value): Promise
+                {
+                    // TODO: Implement sendNonSerializableValue() method.
+                }
             });
 
             $this->server = new HttpServer(
@@ -83,6 +105,7 @@ class IntegrationTest extends AsyncTestCase
         ));
 
         $this->client = $proxyFactory->createProxy(IntegrationTestService::class);
+        $this->unregisteredClient = $proxyFactory->createProxy(UnregisteredIntegrationTestService::class);
     }
 
     public function testToUppercase(): \Generator
@@ -127,11 +150,48 @@ class IntegrationTest extends AsyncTestCase
         }
     }
 
+    public function testNonSerializableReturn(): \Generator
+    {
+        $this->expectException(RpcException::class);
+        $this->expectExceptionMessage('Failed to serialize RPC return value');
+
+        try {
+            yield $this->client->getNonSerializableValue();
+        } finally {
+            yield $this->stop();
+        }
+    }
+
+    public function testNonSerializableParameter(): \Generator
+    {
+        $this->expectException(RpcException::class);
+        $this->expectExceptionMessage('Failed to serialize RPC parameters for Amp\Rpc\IntegrationTestService::sendNonSerializableValue()');
+
+        try {
+            yield $this->client->sendNonSerializableValue((static function () { yield; })());
+        } finally {
+            yield $this->stop();
+        }
+    }
+
+    public function testUnregistered(): \Generator
+    {
+        $this->expectException(RpcException::class);
+        $this->expectExceptionMessage('Failed to call Amp\Rpc\UnregisteredIntegrationTestService::foobar(), because Amp\Rpc\UnregisteredIntegrationTestService is not registered');
+
+        try {
+            yield $this->unregisteredClient->foobar();
+        } finally {
+            yield $this->stop();
+        }
+    }
+
     protected function tearDown(): void
     {
         $this->socket = null;
         $this->server = null;
         $this->client = null;
+        $this->unregisteredClient = null;
 
         parent::tearDown();
     }
