@@ -1,0 +1,30 @@
+os: linux
+language: php
+
+php:
+  - 7.2
+  - 7.3
+  - 7.4
+  - nightly
+
+jobs:
+  allow_failures:
+    - php: nightly
+  fast_finish: true
+
+env:
+  - AMP_DEBUG=true
+
+install:
+  - composer install -n --prefer-dist
+  - composer show
+
+script:
+  - php vendor/bin/phpunit --verbose
+  - PHP_CS_FIXER_IGNORE_ENV=1 php vendor/bin/php-cs-fixer --diff --dry-run -v fix
+
+cache:
+  directories:
+    - $HOME/.composer/cache
+    - $HOME/.php-cs-fixer
+    - $HOME/.local
