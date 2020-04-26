@@ -24,11 +24,11 @@ final class RpcClient implements RpcAdapter
         $this->httpClient = $httpClient ?? HttpClientBuilder::buildDefault();
     }
 
-    public function call(string $wrappedClass, string $method, array $params = [])
+    public function call(string $class, string $method, array $params = [])
     {
-        return call(function () use ($wrappedClass, $method, $params) {
+        return call(function () use ($class, $method, $params) {
             $request = new Request($this->uri, 'POST');
-            $request->setHeader('rpc-class', $wrappedClass);
+            $request->setHeader('rpc-class', $class);
             $request->setHeader('rpc-method', $method);
             $request->setBody($this->serializer->serialize($params));
 
@@ -38,7 +38,7 @@ final class RpcClient implements RpcAdapter
 
             $rpcStatus = $response->getHeader('rpc-status');
             if ($response->getStatus() !== 200 || !\in_array($rpcStatus, ['ok', 'exception'], true)) {
-                throw new RpcException('Failed RPC call to ' . $wrappedClass . '::' . $method . ', bad response code from server: ' . $serializedResult . "\r\n" . $serializedResult);
+                throw new RpcException('Failed RPC call to ' . $class . '::' . $method . ', bad response code from server: ' . $serializedResult . "\r\n" . $serializedResult);
             }
 
             $result = $this->serializer->unserialize($serializedResult);

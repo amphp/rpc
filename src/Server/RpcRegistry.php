@@ -5,7 +5,6 @@ namespace Amp\Rpc\Server;
 use Amp\Promise;
 use Amp\Rpc\RpcException;
 use ProxyManager\Factory\RemoteObject\AdapterInterface as RpcAdapter;
-use function Amp\Rpc\cleanExceptionTrace;
 
 class RpcRegistry implements RpcAdapter
 {
@@ -31,33 +30,33 @@ class RpcRegistry implements RpcAdapter
 
         foreach ($reflection->getMethods() as $method) {
             $returnType = $method->getReturnType();
-            if (!$returnType) {
-                continue;
-            }
+            $methodName = $method->getName();
+            $call = $interface . '::' . $methodName . '()';
 
-            if ($returnType->allowsNull()) {
-                throw new \Error('Invalid mapping for ' . $interface . ', because ' . $interface . '::' . $method->getName() . ' has nullable return type, expected ' . Promise::class);
+            // All supported versions support return types, so require them
+            if (!$returnType || $returnType->allowsNull()) {
+                throw new \Error($call . ' must declare return type ' . Promise::class);
             }
 
             if (!$returnType instanceof \ReflectionNamedType) {
-                throw new \Error('Invalid mapping for ' . $interface . ', because ' . $interface . '::' . $method->getName() . ' has unexpected return type class ' . \get_class($returnType));
+                throw new \Error('Failed to check return type for ' . $call);
             }
 
             if ($returnType->getName() !== Promise::class) {
-                throw new \Error('Invalid mapping for ' . $interface . ', because ' . $interface . '::' . $method->getName() . ' has unexpected return type ' . $returnType->getName() . ', expected ' . Promise::class);
+                throw new \Error($call . ' must declare return type ' . Promise::class);
             }
         }
 
         $this->objects[$lcInterface] = $object;
     }
 
-    public function call(string $wrappedClass, string $method, array $params = [])
+    public function call(string $class, string $method, array $params = [])
     {
-        $lcClass = \strtolower($wrappedClass);
+        $lcClass = \strtolower($class);
 
         $object = $this->objects[$lcClass] ?? null;
         if ($object === null) {
-            throw new RpcException('Failed to call ' . $wrappedClass . '::' . $method . ', because no mapping exists');
+            throw new RpcException('Failed to call ' . $class . '::' . $method . '(), because ' . $class . ' is not registered');
         }
 
         return $object->{$method}(...$params);

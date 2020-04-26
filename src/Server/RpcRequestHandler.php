@@ -10,7 +10,6 @@ use Amp\Rpc\RpcException;
 use Amp\Serialization\Serializer;
 use ProxyManager\Factory\RemoteObject\AdapterInterface as RpcAdapter;
 use function Amp\call;
-use function Amp\Rpc\cleanExceptionTrace;
 
 final class RpcRequestHandler implements RequestHandler
 {
@@ -30,20 +29,27 @@ final class RpcRequestHandler implements RequestHandler
                 return new Response(405);
             }
 
-            $serializedPayload = yield $request->getBody()->buffer();
-            $payload = $this->serializer->unserialize($serializedPayload);
+            try {
+                $serializedPayload = yield $request->getBody()->buffer();
+                $payload = $this->serializer->unserialize($serializedPayload);
 
-            $class = $request->getHeader('rpc-class');
-            $method = $request->getHeader('rpc-method');
+                $class = $request->getHeader('rpc-class');
+                $method = $request->getHeader('rpc-method');
 
-            if (!\method_exists($class, $method)) {
-                return $this->error(new RpcException($class . '::' . $method . ' not found'));
+                if (!\method_exists($class, $method)) {
+                    return $this->error(new RpcException($class . '::' . $method . ' not found'));
+                }
+            } catch (\Throwable $e) {
+                return $this->error(new RpcException('Failed to decode RPC parameters', 0, $e));
             }
 
             try {
                 $promise = $this->rpcAdapter->call($class, $method, $payload);
                 if (!$promise instanceof Promise) {
-                    throw new \Error('Rpc calls must always return an instance of ' . Promise::class . ', got ' . \gettype($promise));
+                    $type = \is_object($promise) ? \get_class($promise) : \gettype($promise);
+                    $errorMessage = 'RPC calls must always return an instance of ' . Promise::class . ', got ' . $type;
+
+                    throw new \Error($errorMessage);
                 }
 
                 return $this->success(yield $promise);
@@ -55,16 +61,34 @@ final class RpcRequestHandler implements RequestHandler
 
     private function success($returnValue): Response
     {
-        return new Response(200, ['content-type' => 'application/octet-stream', 'rpc-status' => 'ok'],
-            $this->serializer->serialize($returnValue));
+        try {
+            $serializedResult = $this->serializer->serialize($returnValue);
+        } catch (\Throwable $e) {
+            return $this->error(new RpcException('Failed to serialize RPC return value', 0, $e));
+        }
+
+        return new Response(200, [
+            'content-type' => 'application/octet-stream',
+            'rpc-status' => 'ok',
+        ], $serializedResult);
     }
 
     private function error(\Throwable $e): Response
     {
         $this->cleanExceptionTrace($e);
 
-        return new Response(200, ['content-type' => 'application/octet-stream', 'rpc-status' => 'exception'],
-            $this->serializer->serialize($e));
+        try {
+            $serializedError = $this->serializer->serialize($e);
+        } catch (\Throwable $e) {
+            $errorMessage = 'Failed to serialize RPC exception of type ' . \get_class($e) . ': ' . $e->getMessage();
+
+            return $this->error(new RpcException($errorMessage, 0, $e));
+        }
+
+        return new Response(200, [
+            'content-type' => 'application/octet-stream',
+            'rpc-status' => 'exception',
+        ], $serializedError);
     }
 
     /**
