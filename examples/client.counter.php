@@ -24,13 +24,15 @@ Amp\Loop::run(static function () {
     $logger = new Logger('server');
     $logger->pushHandler($logHandler);
 
+    $context = (new ConnectContext)
+        ->withTlsContext((new ClientTlsContext(''))->withCaFile(__DIR__ . '/server.pem'));
+
+    $httpConnectionPool = new UnlimitedConnectionPool(new DefaultConnectionFactory(null, $context));
+
     $proxyFactory = new RemoteObjectFactory(new RpcClient(
         'https://localhost:1338/',
         new NativeSerializer,
-        (new HttpClientBuilder)->usingPool(new UnlimitedConnectionPool(new DefaultConnectionFactory(
-            null,
-            (new ConnectContext())->withTlsContext((new ClientTlsContext(''))->withoutPeerVerification())
-        )))->build()
+        (new HttpClientBuilder)->usingPool($httpConnectionPool)->build()
     ));
     $counter = $proxyFactory->createProxy(Counter::class);
 

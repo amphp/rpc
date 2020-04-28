@@ -2,16 +2,19 @@
 
 namespace Amp\Rpc\Client;
 
+use Amp\Http\Client\Connection\UnprocessedRequestException;
 use Amp\Http\Client\HttpClient;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use Amp\Promise;
 use Amp\Rpc\RpcException;
+use Amp\Rpc\RpcProxy;
+use Amp\Rpc\UnprocessedCallException;
 use Amp\Serialization\Serializer;
-use ProxyManager\Factory\RemoteObject\AdapterInterface as RpcAdapter;
 use function Amp\call;
 
-final class RpcClient implements RpcAdapter
+final class RpcClient implements RpcProxy
 {
     private $uri;
     private $serializer;
@@ -24,7 +27,7 @@ final class RpcClient implements RpcAdapter
         $this->httpClient = $httpClient ?? HttpClientBuilder::buildDefault();
     }
 
-    public function call(string $class, string $method, array $params = [])
+    public function call(string $class, string $method, array $params = []): Promise
     {
         return call(function () use ($class, $method, $params) {
             $request = new Request($this->uri, 'POST');
@@ -43,8 +46,12 @@ final class RpcClient implements RpcAdapter
                 /** @var Response $response */
                 $response = yield $this->httpClient->request($request);
                 $serializedResult = yield $response->getBody()->buffer();
+            } catch (UnprocessedRequestException $e) {
+                $errorMessage = 'Failed RPC call due to an HTTP communication failure for ' . $class . '::' . $method . '()';
+
+                throw new UnprocessedCallException($errorMessage, 0, $e);
             } catch (\Throwable $e) {
-                $errorMessage = 'Failed RPC call due to a fail in HTTP communication for ' . $class . '::' . $method . '()';
+                $errorMessage = 'Failed RPC call due to an HTTP communication failure for ' . $class . '::' . $method . '()';
 
                 throw new RpcException($errorMessage, 0, $e);
             }

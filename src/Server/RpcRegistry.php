@@ -4,9 +4,10 @@ namespace Amp\Rpc\Server;
 
 use Amp\Promise;
 use Amp\Rpc\RpcException;
-use ProxyManager\Factory\RemoteObject\AdapterInterface as RpcAdapter;
+use Amp\Rpc\RpcProxy;
+use Amp\Rpc\UnprocessedCallException;
 
-class RpcRegistry implements RpcAdapter
+class RpcRegistry implements RpcProxy
 {
     private $objects = [];
 
@@ -50,13 +51,13 @@ class RpcRegistry implements RpcAdapter
         $this->objects[$lcInterface] = $object;
     }
 
-    public function call(string $class, string $method, array $params = [])
+    public function call(string $class, string $method, array $params = []): Promise
     {
         $lcClass = \strtolower($class);
 
         $object = $this->objects[$lcClass] ?? null;
         if ($object === null) {
-            throw new RpcException('Failed to call ' . $class . '::' . $method . '(), because ' . $class . ' is not registered');
+            throw new UnprocessedCallException('Failed to call ' . $class . '::' . $method . '(), because ' . $class . ' is not registered');
         }
 
         return $object->{$method}(...$params);

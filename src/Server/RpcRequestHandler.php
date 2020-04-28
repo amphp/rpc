@@ -7,6 +7,7 @@ use Amp\Http\Server\RequestHandler;
 use Amp\Http\Server\Response;
 use Amp\Promise;
 use Amp\Rpc\RpcException;
+use Amp\Rpc\UnprocessedCallException;
 use Amp\Serialization\Serializer;
 use ProxyManager\Factory\RemoteObject\AdapterInterface as RpcAdapter;
 use function Amp\call;
@@ -37,10 +38,14 @@ final class RpcRequestHandler implements RequestHandler
                 $method = $request->getHeader('rpc-method');
 
                 if (!\method_exists($class, $method)) {
-                    return $this->error(new RpcException($class . '::' . $method . ' not found'));
+                    // This might seem like a permanent error that shouldn't potentially be retried, but in case of
+                    // deployments the request might fail on one server and succeed on another server.
+                    return $this->error(new UnprocessedCallException($class . '::' . $method . ' not found'));
                 }
             } catch (\Throwable $e) {
-                return $this->error(new RpcException('Failed to decode RPC parameters', 0, $e));
+                // This might seem like a permanent error that shouldn't potentially be retried, but in case of
+                // deployments the request might fail on one server and succeed on another server.
+                return $this->error(new UnprocessedCallException('Failed to decode RPC parameters', 0, $e));
             }
 
             try {

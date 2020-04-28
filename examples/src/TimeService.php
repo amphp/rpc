@@ -7,4 +7,6 @@ use Amp\Promise;
 interface TimeService
 {
     public function getCurrentTime(): Promise;
+
+    public function getId(): Promise;
 }
