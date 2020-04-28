@@ -34,8 +34,11 @@ wait(call(static function () {
 
     $proxyFactory = new RemoteObjectFactory(new RoundRobinBalancer([
         new RpcClient('http://localhost:1337/', $serializer),
-        new RpcClient('https://localhost:1338/', $serializer,
-            (new HttpClientBuilder)->usingPool($httpConnectionPool)->build()),
+        new RpcClient(
+            'https://localhost:1338/',
+            $serializer,
+            (new HttpClientBuilder)->usingPool($httpConnectionPool)->build()
+        ),
     ]));
 
     /** @var TimeService $timeService */

@@ -3,7 +3,6 @@
 namespace Amp\Rpc\Server;
 
 use Amp\Promise;
-use Amp\Rpc\RpcException;
 use Amp\Rpc\RpcProxy;
 use Amp\Rpc\UnprocessedCallException;
 
