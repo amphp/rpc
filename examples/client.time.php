@@ -44,9 +44,9 @@ wait(call(static function () {
     /** @var TimeService $timeService */
     $timeService = $proxyFactory->createProxy(TimeService::class);
 
-    \var_dump(yield $timeService->getCurrentTime());
+    var_dump(yield $timeService->getCurrentTime());
 
     for ($i = 0; $i < 5; $i++) {
-        \var_dump(yield $timeService->getId());
+        var_dump(yield $timeService->getId());
     }
 }));
