@@ -2,7 +2,7 @@
 
 namespace Amp\Rpc\Server;
 
-use Amp\Promise;
+use Amp\Future;
 use Amp\Rpc\RpcProxy;
 use Amp\Rpc\UnprocessedCallException;
 
@@ -35,22 +35,22 @@ class RpcRegistry implements RpcProxy
 
             // All supported versions support return types, so require them
             if (!$returnType || $returnType->allowsNull()) {
-                throw new \Error($call . ' must declare return type ' . Promise::class);
+                throw new \Error($call . ' must declare return type ' . Future::class);
             }
 
             if (!$returnType instanceof \ReflectionNamedType) {
                 throw new \Error('Failed to check return type for ' . $call);
             }
 
-            if ($returnType->getName() !== Promise::class) {
-                throw new \Error($call . ' must declare return type ' . Promise::class);
+            if ($returnType->getName() !== Future::class) {
+                throw new \Error($call . ' must declare return type ' . Future::class);
             }
         }
 
         $this->objects[$lcInterface] = $object;
     }
 
-    public function call(string $class, string $method, array $params = []): Promise
+    public function call(string $class, string $method, array $params = []): Future
     {
         $lcClass = \strtolower($class);
 

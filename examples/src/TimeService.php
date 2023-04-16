@@ -2,11 +2,11 @@
 
 namespace Amp\Rpc\Examples\Basic;
 
-use Amp\Promise;
+use Amp\Future;
 
 interface TimeService
 {
-    public function getCurrentTime(): Promise;
+    public function getCurrentTime(): Future;
 
-    public function getId(): Promise;
+    public function getId(): Future;
 }

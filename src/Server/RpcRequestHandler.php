@@ -5,12 +5,10 @@ namespace Amp\Rpc\Server;
 use Amp\Http\Server\Request;
 use Amp\Http\Server\RequestHandler;
 use Amp\Http\Server\Response;
-use Amp\Promise;
 use Amp\Rpc\RpcException;
 use Amp\Rpc\UnprocessedCallException;
 use Amp\Serialization\Serializer;
 use ProxyManager\Factory\RemoteObject\AdapterInterface as RpcAdapter;
-use function Amp\call;
 
 final class RpcRequestHandler implements RequestHandler
 {
@@ -23,45 +21,35 @@ final class RpcRequestHandler implements RequestHandler
         $this->rpcAdapter = $rpcAdapter;
     }
 
-    public function handleRequest(Request $request): Promise
+    public function handleRequest(Request $request): Response
     {
-        return call(function () use ($request) {
-            if ($request->getMethod() !== 'POST') {
-                return new Response(405);
-            }
+        if ($request->getMethod() !== 'POST') {
+            return new Response(405);
+        }
 
-            try {
-                $serializedPayload = yield $request->getBody()->buffer();
-                $payload = $this->serializer->unserialize($serializedPayload);
+        try {
+            $serializedPayload = $request->getBody()->buffer();
+            $payload = $this->serializer->unserialize($serializedPayload);
 
-                $class = $request->getHeader('rpc-class');
-                $method = $request->getHeader('rpc-method');
+            $class = $request->getHeader('rpc-class');
+            $method = $request->getHeader('rpc-method');
 
-                if (!\method_exists($class, $method)) {
-                    // This might seem like a permanent error that shouldn't potentially be retried, but in case of
-                    // deployments the request might fail on one server and succeed on another server.
-                    return $this->error(new UnprocessedCallException($class . '::' . $method . ' not found'));
-                }
-            } catch (\Throwable $e) {
+            if (!\method_exists($class, $method)) {
                 // This might seem like a permanent error that shouldn't potentially be retried, but in case of
                 // deployments the request might fail on one server and succeed on another server.
-                return $this->error(new UnprocessedCallException('Failed to decode RPC parameters', 0, $e));
+                return $this->error(new UnprocessedCallException($class . '::' . $method . ' not found'));
             }
+        } catch (\Throwable $e) {
+            // This might seem like a permanent error that shouldn't potentially be retried, but in case of
+            // deployments the request might fail on one server and succeed on another server.
+            return $this->error(new UnprocessedCallException('Failed to decode RPC parameters', 0, $e));
+        }
 
-            try {
-                $promise = $this->rpcAdapter->call($class, $method, $payload);
-                if (!$promise instanceof Promise) {
-                    $type = \is_object($promise) ? \get_class($promise) : \gettype($promise);
-                    $errorMessage = 'RPC calls must always return an instance of ' . Promise::class . ', got ' . $type;
-
-                    throw new \Error($errorMessage);
-                }
-
-                return $this->success(yield $promise);
-            } catch (\Throwable $e) {
-                return $this->error($e);
-            }
-        });
+        try {
+            return $this->success($this->rpcAdapter->call($class, $method, $payload)->await());
+        } catch (\Throwable $e) {
+            return $this->error($e);
+        }
     }
 
     private function success($returnValue): Response

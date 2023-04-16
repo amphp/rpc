@@ -2,7 +2,7 @@
 
 namespace Amp\Rpc\Interceptor;
 
-use Amp\Promise;
+use Amp\Future;
 use Amp\Rpc\RpcProxy;
 use Amp\Rpc\UnprocessedCallException;
 
@@ -22,7 +22,7 @@ final class RoundRobinBalancer implements RpcProxy
         $this->proxies = $proxies;
     }
 
-    public function call(string $class, string $method, array $params = []): Promise
+    public function call(string $class, string $method, array $params = []): Future
     {
         $index = $this->next;
 

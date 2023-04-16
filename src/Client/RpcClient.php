@@ -2,17 +2,16 @@
 
 namespace Amp\Rpc\Client;
 
+use Amp\Future;
 use Amp\Http\Client\Connection\UnprocessedRequestException;
 use Amp\Http\Client\HttpClient;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
-use Amp\Http\Client\Response;
-use Amp\Promise;
 use Amp\Rpc\RpcException;
 use Amp\Rpc\RpcProxy;
 use Amp\Rpc\UnprocessedCallException;
 use Amp\Serialization\Serializer;
-use function Amp\call;
+use function Amp\async;
 
 final class RpcClient implements RpcProxy
 {
@@ -27,9 +26,9 @@ final class RpcClient implements RpcProxy
         $this->httpClient = $httpClient ?? HttpClientBuilder::buildDefault();
     }
 
-    public function call(string $class, string $method, array $params = []): Promise
+    public function call(string $class, string $method, array $params = []): Future
     {
-        return call(function () use ($class, $method, $params) {
+        return async(function() use($class, $method, $params) {
             $request = new Request($this->uri, 'POST');
             $request->setHeader('rpc-class', $class);
             $request->setHeader('rpc-method', $method);
@@ -43,16 +42,14 @@ final class RpcClient implements RpcProxy
             }
 
             try {
-                /** @var Response $response */
-                $response = yield $this->httpClient->request($request);
-                $serializedResult = yield $response->getBody()->buffer();
+                $response = $this->httpClient->request($request);
+                $serializedResult = $response->getBody()->buffer();
             } catch (UnprocessedRequestException $e) {
                 $errorMessage = 'Failed RPC call due to an HTTP communication failure for ' . $class . '::' . $method . '()';
 
                 throw new UnprocessedCallException($errorMessage, 0, $e);
             } catch (\Throwable $e) {
                 $errorMessage = 'Failed RPC call due to an HTTP communication failure for ' . $class . '::' . $method . '()';
-
                 throw new RpcException($errorMessage, 0, $e);
             }
 
