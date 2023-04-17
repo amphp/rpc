@@ -14,9 +14,9 @@ use Amp\Socket\ClientTlsContext;
 use Amp\Socket\ConnectContext;
 use Monolog\Logger;
 use ProxyManager\Factory\RemoteObjectFactory;
-use ProxyManager\FileLocator\FileLocator;
-use ProxyManager\GeneratorStrategy\FileWriterGeneratorStrategy;
+use function Amp\async;
 use function Amp\ByteStream\getStdout;
+use function Amp\Future\awaitAll;
 
 // Notice that the counter remains persistent at the server, so repeated invocations of this script will result in different counts
 
@@ -37,26 +37,28 @@ use function Amp\ByteStream\getStdout;
     ));
     $counter = $proxyFactory->createProxy(Counter::class);
 
-    print $counter->get()->await();
-    print \PHP_EOL;
+    print $counter->get();
+    print PHP_EOL;
 
-    $counter->increase()->await();
-    $counter->increase()->await();
+    $counter->increase();
+    $counter->increase();
 
-    print $counter->get()->await();
-    print \PHP_EOL;
+    print $counter->get();
+    print PHP_EOL;
 
-    $counter->decrease()->await();
+    $counter->decrease();
 
-    print $counter->get()->await();
-    print \PHP_EOL;
+    print $counter->get();
+    print PHP_EOL;
 
     $promises = [];
     for ($i = 0; $i < 999; $i++) {
-        $promises[] = $counter->increase();
+        $promises[] = async(function () use ($counter) {
+            $counter->increase();
+        });
     }
 
-    \Amp\Future\awaitAll($promises);
+    awaitAll($promises);
 
-    print $counter->get()->await();
-    print \PHP_EOL;
+    print $counter->get();
+    print PHP_EOL;

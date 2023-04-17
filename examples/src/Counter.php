@@ -2,14 +2,11 @@
 
 namespace Amp\Rpc\Examples\Basic;
 
-use Amp\Future;
-
 interface Counter
 {
-    public function increase(): Future;
+    public function increase(): void;
 
-    public function decrease(): Future;
+    public function decrease(): void;
 
-    /** @return Future<int> */
-    public function get(): Future;
+    public function get(): int;
 }

@@ -2,7 +2,6 @@
 
 namespace Amp\Rpc\Examples;
 
-use Amp\Future;
 use Amp\Rpc\Examples\Basic\Counter;
 use Amp\Rpc\Examples\Basic\TimeService;
 use Amp\Rpc\Server\RpcRegistry;
@@ -19,14 +18,14 @@ function createRegistry(Logger $logger, int $id): RpcRegistry
             $this->id = $id;
         }
 
-        public function getCurrentTime(): Future
+        public function getCurrentTime(): int
         {
-            return Future::complete(time());
+            return time();
         }
 
-        public function getId(): Future
+        public function getId(): int
         {
-            return Future::complete($this->id);
+            return $this->id;
         }
     });
 
@@ -40,7 +39,7 @@ function createRegistry(Logger $logger, int $id): RpcRegistry
         }
 
 
-        public function increase(): Future
+        public function increase(): void
         {
             $this->counter++;
 
@@ -49,21 +48,18 @@ function createRegistry(Logger $logger, int $id): RpcRegistry
             if ($this->counter >= 1999) {
                 throw new \Exception('Failed to increase counter');
             }
-            return Future::complete();
         }
 
-        public function decrease(): Future
+        public function decrease(): void
         {
             $this->counter--;
 
             $this->logger->info('Decreased counter by one');
-
-            return Future::complete();
         }
 
-        public function get(): Future
+        public function get(): int
         {
-            return Future::complete($this->counter);
+            return $this->counter;
         }
     });
 

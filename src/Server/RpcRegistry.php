@@ -2,7 +2,6 @@
 
 namespace Amp\Rpc\Server;
 
-use Amp\Future;
 use Amp\Rpc\RpcProxy;
 use Amp\Rpc\UnprocessedCallException;
 
@@ -28,29 +27,10 @@ class RpcRegistry implements RpcProxy
             throw new \Error('Invalid mapping for ' . $interface . ', because ' . $interface . ' is not an interface');
         }
 
-        foreach ($reflection->getMethods() as $method) {
-            $returnType = $method->getReturnType();
-            $methodName = $method->getName();
-            $call = $interface . '::' . $methodName . '()';
-
-            // All supported versions support return types, so require them
-            if (!$returnType || $returnType->allowsNull()) {
-                throw new \Error($call . ' must declare return type ' . Future::class);
-            }
-
-            if (!$returnType instanceof \ReflectionNamedType) {
-                throw new \Error('Failed to check return type for ' . $call);
-            }
-
-            if ($returnType->getName() !== Future::class) {
-                throw new \Error($call . ' must declare return type ' . Future::class);
-            }
-        }
-
         $this->objects[$lcInterface] = $object;
     }
 
-    public function call(string $class, string $method, array $params = []): Future
+    public function call(string $class, string $method, array $params = [])
     {
         $lcClass = \strtolower($class);
 

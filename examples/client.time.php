@@ -41,8 +41,8 @@ $proxyFactory = new RemoteObjectFactory(new RoundRobinBalancer([
 /** @var TimeService $timeService */
 $timeService = $proxyFactory->createProxy(TimeService::class);
 
-var_dump($timeService->getCurrentTime()->await());
+var_dump($timeService->getCurrentTime());
 
 for ($i = 0; $i < 5; $i++) {
-    var_dump($timeService->getId()->await());
+    var_dump($timeService->getId());
 }

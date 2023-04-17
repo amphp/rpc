@@ -46,7 +46,7 @@ final class RpcRequestHandler implements RequestHandler
         }
 
         try {
-            return $this->success($this->rpcAdapter->call($class, $method, $payload)->await());
+            return $this->success($this->rpcAdapter->call($class, $method, $payload));
         } catch (\Throwable $e) {
             return $this->error($e);
         }

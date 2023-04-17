@@ -2,11 +2,9 @@
 
 namespace Amp\Rpc\Examples\Basic;
 
-use Amp\Future;
-
 interface TimeService
 {
-    public function getCurrentTime(): Future;
+    public function getCurrentTime(): int;
 
-    public function getId(): Future;
+    public function getId(): int;
 }

@@ -2,7 +2,6 @@
 
 namespace Amp\Rpc;
 
-use Amp\Future;
 use Amp\Http\Server\DefaultErrorHandler;
 use Amp\Http\Server\HttpServer;
 use Amp\Http\Server\SocketHttpServer;
@@ -11,35 +10,35 @@ use Amp\Rpc\Client\RpcClient;
 use Amp\Rpc\Server\RpcRegistry;
 use Amp\Rpc\Server\RpcRequestHandler;
 use Amp\Serialization\NativeSerializer;
-use Amp\Socket\ResourceServerSocket;
 use DateTimeImmutable;
-use Generator;
 use ProxyManager\Factory\RemoteObjectFactory;
-use Psr\Log\AbstractLogger;
-use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
-use function Amp\async;
 use function Amp\delay;
-use function Amp\Socket\listen;
 
 interface IntegrationTestService
 {
-    public function toUppercase(string $value): Future;
+    public function toUppercase(string $value): string;
 
-    public function getObject(): Future;
+    public function getObject(): DateTimeImmutable;
 
-    public function throwException(): Future;
+    /**
+     * @never-return
+     */
+    public function throwException(): void;
 
-    public function throwError(): Future;
+    public function throwError(): void;
 
-    public function getNonSerializableValue(): Future;
+    public function getNonSerializableValue(): \Generator;
 
-    public function sendNonSerializableValue($value): Future;
+    /**
+     * @never-return
+     */
+    public function sendNonSerializableValue($value): void;
 }
 
 interface UnregisteredIntegrationTestService
 {
-    public function foobar(): Future;
+    public function foobar(): int;
 }
 
 class IntegrationTest extends AsyncTestCase
@@ -57,39 +56,35 @@ class IntegrationTest extends AsyncTestCase
 
         $registry = new RpcRegistry();
         $registry->register(IntegrationTestService::class, new class implements IntegrationTestService {
-            public function toUppercase(string $value): Future
+            public function toUppercase(string $value): string
             {
-                return Future::complete(\strtoupper($value));
+                return \strtoupper($value);
             }
 
-            public function getObject(): Future
+            public function getObject(): DateTimeImmutable
             {
-                return async(function() {
-                    delay(0.1);
-                    return new DateTimeImmutable('now');
-                });
+                delay(0.1);
+                return new DateTimeImmutable('now');
             }
 
-            public function throwException(): Future
+            public function throwException(): void
             {
-                return Future::error(new \Exception(__METHOD__));
+                throw new \Exception(__METHOD__);
             }
 
-            public function throwError(): Future
+            public function throwError(): void
             {
-                return Future::error(new \TypeError(__METHOD__));
+                throw new \TypeError(__METHOD__);
             }
 
-            public function getNonSerializableValue(): Future
+            public function getNonSerializableValue(): \Generator
             {
-                return Future::complete((static function () {
-                        yield;
-                })());
+                yield;
             }
 
-            public function sendNonSerializableValue($value): Future
+            public function sendNonSerializableValue($value): void
             {
-                return Future::error(new \LogicException());
+                throw new \LogicException();
             }
         });
         $this->server = SocketHttpServer::createForDirectAccess(new NullLogger);
@@ -110,7 +105,7 @@ class IntegrationTest extends AsyncTestCase
     public function testToUppercase(): void
     {
         try {
-            $this->assertSame('FOOBAR', $this->client->toUppercase('fooBar')->await());
+            $this->assertSame('FOOBAR', $this->client->toUppercase('fooBar'));
         } finally {
             $this->stop();
         }
@@ -119,7 +114,7 @@ class IntegrationTest extends AsyncTestCase
     public function testGetObject(): void
     {
         try {
-            $this->assertInstanceOf(DateTimeImmutable::class, $this->client->getObject()->await());
+            $this->assertInstanceOf(DateTimeImmutable::class, $this->client->getObject());
         } finally {
             $this->stop();
         }
@@ -131,7 +126,7 @@ class IntegrationTest extends AsyncTestCase
         $this->expectExceptionMessage('::' . 'throwException');
 
         try {
-            $this->client->throwException()->await();
+            $this->client->throwException();
         } finally {
             $this->stop();
         }
@@ -143,7 +138,7 @@ class IntegrationTest extends AsyncTestCase
         $this->expectExceptionMessage('::' . 'throwError');
 
         try {
-            $this->client->throwError()->await();
+            $this->client->throwError();
         } finally {
             $this->stop();
         }
@@ -155,7 +150,7 @@ class IntegrationTest extends AsyncTestCase
         $this->expectExceptionMessage('Failed to serialize RPC return value');
 
         try {
-            $this->client->getNonSerializableValue()->await();
+            $this->client->getNonSerializableValue();
         } finally {
             $this->stop();
         }
@@ -167,7 +162,7 @@ class IntegrationTest extends AsyncTestCase
         $this->expectExceptionMessage('Failed to serialize RPC parameters for Amp\Rpc\IntegrationTestService::sendNonSerializableValue()');
 
         try {
-            $this->client->sendNonSerializableValue((static function () { yield; })())->await();
+            $this->client->sendNonSerializableValue((static function () { yield; })());
         } finally {
             $this->stop();
         }
@@ -179,7 +174,7 @@ class IntegrationTest extends AsyncTestCase
         $this->expectExceptionMessage('Failed to call Amp\Rpc\UnregisteredIntegrationTestService::foobar(), because Amp\Rpc\UnregisteredIntegrationTestService is not registered');
 
         try {
-            $this->unregisteredClient->foobar()->await();
+            $this->unregisteredClient->foobar();
         } finally {
             $this->stop();
         }
