@@ -3,7 +3,7 @@
     "description": "Remote procedure calls for PHP based on Amp.",
     "type": "library",
     "require": {
-        "php": ">=7.2",
+        "php": ">=8.1",
         "amphp/amp": "^3",
         "amphp/byte-stream": "^2",
         "amphp/http-server": "3.x-dev",
