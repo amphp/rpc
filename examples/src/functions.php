@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Amp\Rpc\Examples;
 
@@ -38,7 +38,6 @@ function createRegistry(Logger $logger, int $id): RpcRegistry
         {
             $this->logger = $logger;
         }
-
 
         public function increase(): void
         {
