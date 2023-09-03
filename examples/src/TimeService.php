@@ -2,11 +2,9 @@
 
 namespace Amp\Rpc\Examples\Basic;
 
-use Amp\Promise;
-
 interface TimeService
 {
-    public function getCurrentTime(): Promise;
+    public function getCurrentTime(): float;
 
-    public function getId(): Promise;
+    public function getId(): int;
 }

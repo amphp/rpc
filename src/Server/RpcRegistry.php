@@ -2,13 +2,12 @@
 
 namespace Amp\Rpc\Server;
 
-use Amp\Promise;
 use Amp\Rpc\RpcProxy;
 use Amp\Rpc\UnprocessedCallException;
 
-class RpcRegistry implements RpcProxy
+final class RpcRegistry implements RpcProxy
 {
-    private $objects = [];
+    private array $objects = [];
 
     public function register(string $interface, object $object): void
     {
@@ -28,35 +27,16 @@ class RpcRegistry implements RpcProxy
             throw new \Error('Invalid mapping for ' . $interface . ', because ' . $interface . ' is not an interface');
         }
 
-        foreach ($reflection->getMethods() as $method) {
-            $returnType = $method->getReturnType();
-            $methodName = $method->getName();
-            $call = $interface . '::' . $methodName . '()';
-
-            // All supported versions support return types, so require them
-            if (!$returnType || $returnType->allowsNull()) {
-                throw new \Error($call . ' must declare return type ' . Promise::class);
-            }
-
-            if (!$returnType instanceof \ReflectionNamedType) {
-                throw new \Error('Failed to check return type for ' . $call);
-            }
-
-            if ($returnType->getName() !== Promise::class) {
-                throw new \Error($call . ' must declare return type ' . Promise::class);
-            }
-        }
-
         $this->objects[$lcInterface] = $object;
     }
 
-    public function call(string $class, string $method, array $params = []): Promise
+    public function call(string $wrappedClass, string $method, array $params = []): mixed
     {
-        $lcClass = \strtolower($class);
+        $lcClass = \strtolower($wrappedClass);
 
         $object = $this->objects[$lcClass] ?? null;
         if ($object === null) {
-            throw new UnprocessedCallException('Failed to call ' . $class . '::' . $method . '(), because ' . $class . ' is not registered');
+            throw new UnprocessedCallException('Failed to call ' . $wrappedClass . '::' . $method . '(), because ' . $wrappedClass . ' is not registered');
         }
 
         return $object->{$method}(...$params);

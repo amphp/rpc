@@ -2,17 +2,15 @@
 
 namespace Amp\Rpc\Interceptor;
 
-use Amp\Promise;
 use Amp\Rpc\RpcProxy;
 use Amp\Rpc\UnprocessedCallException;
 
 final class RoundRobinBalancer implements RpcProxy
 {
     /** @var RpcProxy[] */
-    private $proxies;
+    private array $proxies;
 
-    /** @var int */
-    private $next = 0;
+    private int $next = 0;
 
     /**
      * @param RpcProxy[] $proxies
@@ -22,7 +20,7 @@ final class RoundRobinBalancer implements RpcProxy
         $this->proxies = $proxies;
     }
 
-    public function call(string $class, string $method, array $params = []): Promise
+    public function call(string $wrappedClass, string $method, array $params = []): mixed
     {
         $index = $this->next;
 
@@ -34,12 +32,12 @@ final class RoundRobinBalancer implements RpcProxy
 
         do {
             try {
-                return $this->proxies[($index + $attempt) % \count($this->proxies)]->call($class, $method, $params);
+                return $this->proxies[($index + $attempt) % \count($this->proxies)]->call($wrappedClass, $method, $params);
             } catch (UnprocessedCallException $e) {
                 $attempt++;
             }
         } while ($attempt < \count($this->proxies));
 
-        throw new UnprocessedCallException("Giving up calling {$class}::{$method}() after {$attempt} attempts returning " . UnprocessedCallException::class);
+        throw new UnprocessedCallException("Giving up calling {$wrappedClass}::{$method}() after {$attempt} attempts returning " . UnprocessedCallException::class);
     }
 }

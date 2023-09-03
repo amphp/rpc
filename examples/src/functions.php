@@ -2,33 +2,31 @@
 
 namespace Amp\Rpc\Examples;
 
-use Amp\Promise;
 use Amp\Rpc\Examples\Basic\Counter;
 use Amp\Rpc\Examples\Basic\TimeService;
 use Amp\Rpc\Server\RpcRegistry;
-use Amp\Success;
 use Monolog\Logger;
-use function Amp\getCurrentTime;
+use function Amp\now;
 
 function createRegistry(Logger $logger, int $id): RpcRegistry
 {
     $registry = new RpcRegistry();
     $registry->register(TimeService::class, new class($id) implements TimeService {
-        private $id;
+        private int $id;
 
         public function __construct(int $id)
         {
             $this->id = $id;
         }
 
-        public function getCurrentTime(): Promise
+        public function getCurrentTime(): float
         {
-            return new Success(getCurrentTime());
+            return now();
         }
 
-        public function getId(): Promise
+        public function getId(): int
         {
-            return new Success($this->id);
+            return $this->id;
         }
     });
 
@@ -42,7 +40,7 @@ function createRegistry(Logger $logger, int $id): RpcRegistry
         }
 
 
-        public function increase(): Promise
+        public function increase(): void
         {
             $this->counter++;
 
@@ -51,22 +49,18 @@ function createRegistry(Logger $logger, int $id): RpcRegistry
             if ($this->counter >= 1999) {
                 throw new \Exception('Failed to increase counter');
             }
-
-            return new Success;
         }
 
-        public function decrease(): Promise
+        public function decrease(): void
         {
             $this->counter--;
 
             $this->logger->info('Decreased counter by one');
-
-            return new Success;
         }
 
-        public function get(): Promise
+        public function get(): int
         {
-            return new Success($this->counter);
+            return $this->counter;
         }
     });
 

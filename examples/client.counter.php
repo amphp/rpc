@@ -14,49 +14,49 @@ use Amp\Socket\ClientTlsContext;
 use Amp\Socket\ConnectContext;
 use Monolog\Logger;
 use ProxyManager\Factory\RemoteObjectFactory;
+use function Amp\async;
 use function Amp\ByteStream\getStdout;
+use function Amp\Future\await;
 
 // Notice that the counter remains persistent at the server, so repeated invocations of this script will result in different counts
 
-Amp\Loop::run(static function () {
-    $logHandler = new StreamHandler(getStdout());
-    $logHandler->setFormatter(new ConsoleFormatter);
-    $logger = new Logger('server');
-    $logger->pushHandler($logHandler);
+$logHandler = new StreamHandler(getStdout());
+$logHandler->setFormatter(new ConsoleFormatter);
+$logger = new Logger('server');
+$logger->pushHandler($logHandler);
 
-    $context = (new ConnectContext)
-        ->withTlsContext((new ClientTlsContext(''))->withCaFile(__DIR__ . '/server.pem'));
+$context = (new ConnectContext)
+    ->withTlsContext((new ClientTlsContext(''))->withCaFile(__DIR__ . '/server.pem'));
 
-    $httpConnectionPool = new UnlimitedConnectionPool(new DefaultConnectionFactory(null, $context));
+$httpConnectionPool = new UnlimitedConnectionPool(new DefaultConnectionFactory(null, $context));
 
-    $proxyFactory = new RemoteObjectFactory(new RpcClient(
-        'https://localhost:1338/',
-        new NativeSerializer,
-        (new HttpClientBuilder)->usingPool($httpConnectionPool)->build()
-    ));
-    $counter = $proxyFactory->createProxy(Counter::class);
+$proxyFactory = new RemoteObjectFactory(new RpcClient(
+    'https://localhost:1338/',
+    new NativeSerializer,
+    (new HttpClientBuilder)->usingPool($httpConnectionPool)->build()
+));
+$counter = $proxyFactory->createProxy(Counter::class);
 
-    print yield $counter->get();
-    print \PHP_EOL;
+print $counter->get();
+print \PHP_EOL;
 
-    yield $counter->increase();
-    yield $counter->increase();
+$counter->increase();
+$counter->increase();
 
-    print yield $counter->get();
-    print \PHP_EOL;
+print $counter->get();
+print \PHP_EOL;
 
-    yield $counter->decrease();
+$counter->decrease();
 
-    print yield $counter->get();
-    print \PHP_EOL;
+print $counter->get();
+print \PHP_EOL;
 
-    $promises = [];
-    for ($i = 0; $i < 999; $i++) {
-        $promises[] = $counter->increase();
-    }
+$futures = [];
+for ($i = 0; $i < 999; $i++) {
+    $futures[] = async($counter->increase(...));
+}
 
-    yield $promises;
+await($futures);
 
-    print yield $counter->get();
-    print \PHP_EOL;
-});
+print $counter->get();
+print \PHP_EOL;

@@ -2,17 +2,13 @@
 
 namespace Amp\Rpc\Client;
 
-use Amp\Http\Client\Connection\UnprocessedRequestException;
 use Amp\Http\Client\HttpClient;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
-use Amp\Http\Client\Response;
-use Amp\Promise;
 use Amp\Rpc\RpcException;
 use Amp\Rpc\RpcProxy;
 use Amp\Rpc\UnprocessedCallException;
 use Amp\Serialization\Serializer;
-use function Amp\call;
 
 final class RpcClient implements RpcProxy
 {
@@ -27,55 +23,52 @@ final class RpcClient implements RpcProxy
         $this->httpClient = $httpClient ?? HttpClientBuilder::buildDefault();
     }
 
-    public function call(string $class, string $method, array $params = []): Promise
+    public function call(string $wrappedClass, string $method, array $params = []): mixed
     {
-        return call(function () use ($class, $method, $params) {
-            $request = new Request($this->uri, 'POST');
-            $request->setHeader('rpc-class', $class);
-            $request->setHeader('rpc-method', $method);
+        $request = new Request($this->uri, 'POST');
+        $request->setHeader('rpc-class', $wrappedClass);
+        $request->setHeader('rpc-method', $method);
 
-            try {
-                $request->setBody($this->serializer->serialize($params));
-            } catch (\Throwable $e) {
-                $errorMessage = 'Failed to serialize RPC parameters for ' . $class . '::' . $method . '()';
+        try {
+            $request->setBody($this->serializer->serialize($params));
+        } catch (\Throwable $e) {
+            $errorMessage = 'Failed to serialize RPC parameters for ' . $wrappedClass . '::' . $method . '()';
 
-                throw new RpcException($errorMessage, 0, $e);
-            }
+            throw new RpcException($errorMessage, 0, $e);
+        }
 
-            try {
-                /** @var Response $response */
-                $response = yield $this->httpClient->request($request);
-                $serializedResult = yield $response->getBody()->buffer();
-            } catch (UnprocessedRequestException $e) {
-                $errorMessage = 'Failed RPC call due to an HTTP communication failure for ' . $class . '::' . $method . '()';
+        try {
+            $response = $this->httpClient->request($request);
+            $serializedResult = $response->getBody()->buffer();
+        } catch (\Throwable $e) {
+            $errorMessage = 'Failed RPC call due to an HTTP communication failure for ' . $wrappedClass . '::' . $method . '()';
 
+            if ($request->isUnprocessed()) {
                 throw new UnprocessedCallException($errorMessage, 0, $e);
-            } catch (\Throwable $e) {
-                $errorMessage = 'Failed RPC call due to an HTTP communication failure for ' . $class . '::' . $method . '()';
-
-                throw new RpcException($errorMessage, 0, $e);
             }
 
-            $rpcStatus = $response->getHeader('rpc-status');
-            $httpStatus = $response->getStatus();
+            throw new RpcException($errorMessage, 0, $e);
+        }
 
-            if ($httpStatus !== 200 || !\in_array($rpcStatus, ['ok', 'exception'], true)) {
-                throw new RpcException('Failed RPC call to ' . $class . '::' . $method . '() due to an unexpected HTTP status code: ' . $httpStatus . "\r\n" . $serializedResult);
-            }
+        $rpcStatus = $response->getHeader('rpc-status');
+        $httpStatus = $response->getStatus();
 
-            try {
-                $result = $this->serializer->unserialize($serializedResult);
-            } catch (\Throwable $e) {
-                $errorMessage = 'Failed to deserialize RPC result for ' . $class . '::' . $method . '()';
+        if ($httpStatus !== 200 || !\in_array($rpcStatus, ['ok', 'exception'], true)) {
+            throw new RpcException('Failed RPC call to ' . $wrappedClass . '::' . $method . '() due to an unexpected HTTP status code: ' . $httpStatus . "\r\n" . $serializedResult);
+        }
 
-                throw new RpcException($errorMessage, 0, $e);
-            }
+        try {
+            $result = $this->serializer->unserialize($serializedResult);
+        } catch (\Throwable $e) {
+            $errorMessage = 'Failed to deserialize RPC result for ' . $wrappedClass . '::' . $method . '()';
 
-            if ($rpcStatus === 'exception') {
-                throw $result;
-            }
+            throw new RpcException($errorMessage, 0, $e);
+        }
 
-            return $result;
-        });
+        if ($rpcStatus === 'exception') {
+            throw $result;
+        }
+
+        return $result;
     }
 }
