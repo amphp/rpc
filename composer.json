@@ -7,10 +7,10 @@
         "amphp/amp": "^3",
         "amphp/byte-stream": "^2",
         "amphp/http-server": "^3",
-        "amphp/http-client": "^5-beta",
+        "amphp/http-client": "^5",
         "amphp/serialization": "^1",
         "amphp/sync": "^2",
-        "friendsofphp/proxy-manager-lts": "^1.0.16"
+        "friendsofphp/proxy-manager-lts": "^1.0.17"
     },
     "require-dev": {
         "phpunit/phpunit": "^9.6",
@@ -32,6 +32,7 @@
     },
     "autoload-dev": {
         "psr-4": {
+            "Amp\\Rpc\\": "test",
             "Amp\\Rpc\\Examples\\Basic\\": "examples/src"
         },
         "files": [
