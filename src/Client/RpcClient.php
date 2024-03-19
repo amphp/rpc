@@ -12,9 +12,9 @@ use Amp\Serialization\Serializer;
 
 final class RpcClient implements RpcProxy
 {
-    private $uri;
-    private $serializer;
-    private $httpClient;
+    private string $uri;
+    private Serializer $serializer;
+    private HttpClient $httpClient;
 
     public function __construct(string $uri, Serializer $serializer, ?HttpClient $httpClient = null)
     {
