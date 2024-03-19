@@ -22,7 +22,7 @@ use function Amp\Future\await;
 
 $logHandler = new StreamHandler(getStdout());
 $logHandler->setFormatter(new ConsoleFormatter);
-$logger = new Logger('server');
+$logger = new Logger('client');
 $logger->pushHandler($logHandler);
 
 $context = (new ConnectContext)

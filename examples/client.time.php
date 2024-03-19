@@ -19,7 +19,7 @@ use function Amp\ByteStream\getStdout;
 
 $logHandler = new StreamHandler(getStdout());
 $logHandler->setFormatter(new ConsoleFormatter);
-$logger = new Logger('server');
+$logger = new Logger('client');
 $logger->pushHandler($logHandler);
 
 $serializer = new NativeSerializer;
